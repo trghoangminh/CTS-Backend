@@ -1,0 +1,302 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id             Int      @id @default(autoincrement())
+  name           String
+  description    String?  @db.Text
+  price          Int
+  brand          String?  @db.VarChar(100)
+  model          String?  @db.VarChar(100)
+  status         ProductStatus @default(AVAILABLE)
+  listImage      Json?
+  specs          Json?
+  warranty_months Int?
+  stock_quaear   Int?
+  createdAtntity Int      @default(0)
+  release_y      DateTime
+  updatedAt      DateTime
+  createdBy      String?  @db.VarChar(100)
+  updatedBy      String?  @db.VarChar(100)
+  address        String?  @db.VarChar(191)
+  partType       PartType @default(OTHER)
+  promotions     Promotion[]
+  inventories    Inventory[]
+  reviews        Review[]
+  orderItems     OrderItem[]
+  // brandProducts removed: handled by _BrandToProduct join table
+  brands Brand[] @relation("BrandProducts")
+  comboProducts  ComboProduct[]
+}
+
+enum ProductStatus {
+  AVAILABLE
+  SOLD
+  OUT_OF_STOCK
+}
+
+enum PartType {
+  CPU
+  GPU
+  RAM
+  SSD
+  HDD
+  MAINBOARD
+  PSU
+  CASE
+  COOLER
+  MONITOR
+  ACCESSORY
+  OTHER
+}
+
+model Promotion {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?  @db.Text
+  discount    Decimal  @db.Decimal(5, 2)
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime
+  updatedAt   DateTime
+  productId   Int
+  product     Product  @relation(fields: [productId], references: [id], onUpdate: Cascade)
+  createdBy   String?  @db.VarChar(100)
+  updatedBy   String?  @db.VarChar(100)
+  times       Int
+  vouchers    Voucher[]
+}
+
+model Voucher {
+  id          Int      @id @default(autoincrement())
+  code        String   @db.VarChar(50)
+  promotionId Int
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onUpdate: Cascade)
+  discount    Decimal  @db.Decimal(5, 2)
+  usageLimit  Int
+  usedCount   Int      @default(0)
+  expiryDate  DateTime
+  createdAt   DateTime
+  updatedAt   DateTime
+  createdBy   String?  @db.VarChar(100)
+  updatedBy   String?  @db.VarChar(100)
+}
+
+model Inventory {
+  id          Int      @id @default(autoincrement())
+  productId   Int
+  product     Product  @relation(fields: [productId], references: [id], onUpdate: Cascade)
+  quantity    Int
+  createdAt   DateTime
+  updatedAt   DateTime
+  createdBy   String?  @db.VarChar(100)
+  updatedBy   String?  @db.VarChar(100)
+}
+
+model User {
+  id               Int      @id @default(autoincrement())
+  fullName         String
+  email            String   @unique
+  passwordHash     String
+  role             UserRole
+  gender           Gender   @default(OTHER)
+  dateOfBirth      DateTime?
+  phoneNumber      String?  @db.VarChar(20)
+  addressLine1     String?  @db.VarChar(255)
+  addressLine2     String?  @db.VarChar(255)
+  createdAt        DateTime
+  updatedAt        DateTime
+  profilePictureURL String? @db.VarChar(255)
+  createdBy        String?  @db.VarChar(100)
+  updatedBy        String?  @db.VarChar(100)
+  district         String?  @db.VarChar(100)
+  province         String?  @db.VarChar(100)
+  ward             String?  @db.VarChar(100)
+  reviews          Review[]
+  orders           Order[]
+  orderHistories   OrderHistory[] @relation("OrderHistoryUpdatedBy")
+  notifications    Notification[]
+  transactionHistories TransactionHistory[]
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  Staff
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+model Review {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  productId   Int
+  user        User     @relation(fields: [userId], references: [id], onUpdate: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onUpdate: Cascade)
+  rating      Int
+  comment     String?  @db.Text
+  createdAt   DateTime
+  updatedAt   DateTime
+  createdBy   String?  @db.VarChar(100)
+  updatedBy   String?  @db.VarChar(100)
+}
+
+model Order {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onUpdate: Cascade)
+  totalAmount Decimal  @db.Decimal(10, 2)
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime
+  updatedAt   DateTime
+  createdBy   String?  @db.VarChar(100)
+  updatedBy   String?  @db.VarChar(100)
+  orderItems  OrderItem[]
+  orderHistories OrderHistory[]
+  transactions Transaction[]
+  transactionHistories TransactionHistory[]
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model OrderItem {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  productId   Int
+  order       Order    @relation(fields: [orderId], references: [id], onUpdate: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onUpdate: Cascade)
+  quantity    Int
+  price       Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime
+  updatedAt   DateTime
+  createdBy   String?  @db.VarChar(100)
+  updatedBy   String?  @db.VarChar(100)
+}
+
+model OrderHistory {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  status      OrderStatus
+  updatedById Int?
+  order       Order    @relation(fields: [orderId], references: [id], onUpdate: Cascade)
+  updatedBy   User?    @relation("OrderHistoryUpdatedBy", fields: [updatedById], references: [id], onUpdate: Cascade, onDelete: SetNull)
+  updatedAt   DateTime
+  createdBy   String?  @db.VarChar(100)
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onUpdate: Cascade)
+  message     String   @db.Text
+  isRead      Boolean  @default(false)
+  createdAt   DateTime
+  updatedAt   DateTime
+  createdBy   String?  @db.VarChar(100)
+  updatedBy   String?  @db.VarChar(100)
+}
+
+model Brand {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?  @db.Text
+  logoURL     String?  @db.VarChar(255)
+  createdAt   DateTime
+  updatedAt   DateTime
+  createdBy   String?  @db.VarChar(100)
+  updatedBy   String?  @db.VarChar(100)
+  // brandProducts removed: handled by _BrandToProduct join table
+  products Product[] @relation("BrandProducts")
+}
+
+
+
+model TransactionHistory {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  order       Order    @relation(fields: [orderId], references: [id], onUpdate: Cascade)
+  description String?  @db.VarChar(191)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onUpdate: Cascade)
+  object      String?  @db.VarChar(191)
+  paymentMethod Int
+  createdBy   String?  @db.VarChar(191)
+  updatedBy   String?  @db.VarChar(191)
+  createdAt   DateTime
+  updatedAt   DateTime
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  infor       String?  @db.VarChar(191)
+  orderId     Int
+  order       Order    @relation(fields: [orderId], references: [id], onUpdate: Cascade)
+  createdAt   DateTime
+  updatedAt   DateTime
+}
+
+model OtpRequest {
+  id          Int      @id @default(autoincrement())
+  email       String   @db.VarChar(191)
+  otp         String   @db.VarChar(191)
+  expiryTime  DateTime
+  createdAt   DateTime
+  updatedAt   DateTime
+}
+
+model File {
+  id          Int      @id @default(autoincrement())
+  fileKey     String   @db.VarChar(191)
+  fileUrl     String   @db.VarChar(191)
+  appUrl      String   @db.VarChar(191)
+  fileName    String   @db.VarChar(191)
+  fileType    String   @db.VarChar(191)
+  fileSize    Int
+  isTemp      Boolean  @default(true)
+  associatedTableType String? @db.VarChar(191)
+  associatedTableId   Int?
+  createdAt   DateTime
+  updatedAt   DateTime
+  createdBy   String?  @db.VarChar(191)
+  updatedBy   String?  @db.VarChar(191)
+}
+
+model Combo {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?  @db.Text
+  totalPrice  Decimal  @db.Decimal(10, 2)
+  discount    Decimal  @db.Decimal(5, 2) @default(0)
+  createdAt   DateTime
+  updatedAt   DateTime
+  createdBy   String?  @db.VarChar(100)
+  updatedBy   String?  @db.VarChar(100)
+  comboProducts ComboProduct[]
+}
+
+model ComboProduct {
+  id          Int      @id @default(autoincrement())
+  comboId     Int
+  productId   Int
+  combo       Combo    @relation(fields: [comboId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  quantity    Int      @default(1)
+  createdAt   DateTime
+  updatedAt   DateTime
+}
